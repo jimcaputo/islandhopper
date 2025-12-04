@@ -6,15 +6,36 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
+data class Vessel(
+    var name: String = "",
+    var departTerminal: String = "",
+    var atDock: Boolean = false,
+    var arriveTerminal: String? = null,
+    var scheduledDeparture: LocalDateTime? = null,
+    var actualDeparture: LocalDateTime? = null,
+    var estimatedArrival: LocalDateTime? = null
+)
+
+data class Schedule(
+    var vesselName: String = "",
+    var departTime: LocalDateTime? = null,
+    var arriveTime: LocalDateTime? = null,
+    var duration: Long = 0
+)
+
 class MainViewModel : ViewModel() {
     var depart by mutableStateOf(value = Orcas)
     var arrive by mutableStateOf(value = Anacortes)
+
+    var vesselList: MutableList<Vessel> = mutableListOf()
+    var scheduleList: MutableList<Schedule> = mutableListOf()
 
     val todayMillis: Long = initTodayMilli()
     val todayDateTime: LocalDateTime = initTodayDateTime()
@@ -28,7 +49,7 @@ class MainViewModel : ViewModel() {
 
     fun initTodayDateTime() : LocalDateTime {
         val instant: Instant = Instant.ofEpochMilli(todayMillis)
-        val localDateTime: LocalDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) // of("America/Los_Angeles")
+        val localDateTime: LocalDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
         return localDateTime
     }
 

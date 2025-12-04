@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,10 +55,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        FerryAPI.create(applicationContext)
+
         setContent {
             IslandHopperTheme {
                 HomeScreen()
-
             }
         }
     }
@@ -83,7 +85,6 @@ fun HomeScreen() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IslandHopper(innerPadding: PaddingValues) {
     val mvm: MainViewModel = viewModel()
@@ -143,17 +144,30 @@ fun IslandHopper(innerPadding: PaddingValues) {
             }
             TextButton(onClick = { showDatePicker = true }) {
                 Text(
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
+                    color = Color.Blue,
                     text = mvm.getFormattedDate())
             }
             Button(onClick = { mvm.nextDay() }) {
                 Text(text = "Next")
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { FerryAPI.fetchSchedules(mvm) }) {
+                Text("Schedules Test")
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { FerryAPI.fetchVessels(mvm) }) {
+                Text("Vessels Test")
+            }
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerModal(mvm: MainViewModel, onDismiss: () -> Unit) {
     val datePickerState = rememberDatePickerState(

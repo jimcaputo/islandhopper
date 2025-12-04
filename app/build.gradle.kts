@@ -49,8 +49,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material3)
 
+    implementation("com.android.volley:volley:1.2.1")
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.ui.graphics)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
