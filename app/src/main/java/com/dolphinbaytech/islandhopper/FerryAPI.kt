@@ -21,7 +21,9 @@ object FerryAPI {
         queue = Volley.newRequestQueue(context)
     }
 
-    fun fetchSchedules(mvm: MainViewModel) {
+    fun fetchSchedules(reqId: Long) {
+        val mvm = IslandHopper.mvm
+
         // If the user set the terminals both the same, then clear the ListView, and simply return.
         if (mvm.depart.name == mvm.arrive.name) return
 
@@ -35,21 +37,25 @@ object FerryAPI {
         val request = JsonObjectRequest(
             Request.Method.GET, url, null,
             { jsonSchedules ->
-                // TODO - do some date matching to make sure this response matters, maybe here, or maybe in the callback that's
-                // populating the actual UI. This seems like it should be a better way than doing that wonky counter thing
-                processSchedules(mvm, jsonSchedules)
+                if (reqId == IslandHopper.reqId) {
+                    processSchedules(jsonSchedules)
+                }
             },
             { error ->
             })
 
         try {
             queue.add(request)
-        } catch (error: Exception) {
+        }
+        catch (error: Exception) {
         }
     }
 
-    fun processSchedules(mvm: MainViewModel, jsonSchedules: JSONObject) {
+    fun processSchedules(jsonSchedules: JSONObject) {
+        val mvm = IslandHopper.mvm
+
         try {
+            mvm.scheduleList.clear()
             val schedules: JSONArray =
                 jsonSchedules.getJSONArray("TerminalCombos").getJSONObject(0).getJSONArray("Times")
 
@@ -81,13 +87,13 @@ object FerryAPI {
         }
     }
 
-    fun fetchVessels(mvm: MainViewModel) {
+    fun fetchVessels() {
         val url = "https://www.wsdot.wa.gov/ferries/api/vessels/rest/vessellocations?apiaccesscode=${ApiKeys.WSDOT}"
 
         val request = JsonArrayRequest(
             Request.Method.GET, url,null,
             { jsonVessels ->
-                processVessels(mvm, jsonVessels)
+                processVessels(jsonVessels)
             },
             { error ->
             }
@@ -95,13 +101,14 @@ object FerryAPI {
 
         try {
             queue.add(request)
-        } catch (error: Exception) {
+        }
+        catch (error: Exception) {
         }
     }
 
-    fun processVessels(mvm: MainViewModel, jsonVessels: JSONArray) {
+    fun processVessels(jsonVessels: JSONArray) {
         try {
-            mvm.vesselList.clear()
+            IslandHopper.mvm.vesselList.clear()
             for (i in 0..<jsonVessels.length()) {
                 val jsonVessel: JSONObject = jsonVessels.getJSONObject(i)
                 val vessel = Vessel()
@@ -117,7 +124,7 @@ object FerryAPI {
                     vessel.actualDeparture = getJsonTime(json = jsonVessel, name = "LeftDock")
                     vessel.estimatedArrival = getJsonTime(json = jsonVessel, name = "Eta")
                 }
-                mvm.vesselList.add(vessel)
+                IslandHopper.mvm.vesselList.add(vessel)
             }
         } catch (error: Exception) {
         }

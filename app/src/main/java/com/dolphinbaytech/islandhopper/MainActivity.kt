@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,20 +43,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.format.DateTimeFormatter
 
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dolphinbaytech.islandhopper.ui.theme.IslandHopperTheme
 
 
 class MainActivity : ComponentActivity() {
+
+    val mvm: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         FerryAPI.create(applicationContext)
+        IslandHopper.create(mvm)
+        IslandHopper.updateSchedules()
 
         setContent {
             IslandHopperTheme {
@@ -87,123 +93,89 @@ fun HomeScreen() {
 
 @Composable
 fun IslandHopper(innerPadding: PaddingValues) {
-    val mvm: MainViewModel = viewModel()
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    if (showDatePicker) {
-        DatePickerModal(mvm, onDismiss = { showDatePicker = false })
-    }
+    val mvm = IslandHopper.mvm
 
     Column(
         modifier = Modifier.padding(innerPadding)
-        //modifier = Modifier.fillMaxSize()
     ) {
         Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(weight = 1f)
-                    .padding(horizontal = 6.dp)
-            ) {
-                DepartPicker(mvm)
-            }
-            IconButton(
-                onClick = { mvm.setTerminals(depart = mvm.arrive, arrive = mvm.depart) }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.SwapHoriz,
-                    contentDescription = "Back"
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .weight(weight = 1f)
-                    .padding(horizontal = 6.dp)
-            ) {
-                ArrivePicker(mvm)
-            }
-        }
-
+        TerminalControls()
+        Spacer(modifier = Modifier.height(12.dp))
+        DateControls()
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
-            Button(
-                enabled = (mvm.dateMillis > mvm.todayMillis),
-                onClick = { mvm.prevDay() }
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Depart")
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Arrive")
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Duration")
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Ferry")
+        }
+
+        for (schedule in mvm.scheduleList) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
             ) {
-                Text(text = "Prev")
-            }
-            TextButton(onClick = { showDatePicker = true }) {
-                Text(
-                    fontSize = 18.sp,
-                    color = Color.Blue,
-                    text = mvm.getFormattedDate())
-            }
-            Button(onClick = { mvm.nextDay() }) {
-                Text(text = "Next")
-            }
-        }
+                var departTime = schedule.departTime.format(DateTimeFormatter.ofPattern("h:mm"))
+                departTime += if (schedule.departTime.hour < 12) "am" else "pm"
+                var arriveTime = schedule.arriveTime.format(DateTimeFormatter.ofPattern("h:mm"))
+                arriveTime += if (schedule.arriveTime.hour < 12) "am" else "pm"
+                val duration = schedule.duration.toString() + "min"
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = { FerryAPI.fetchSchedules(mvm) }) {
-                Text("Schedules Test")
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = { FerryAPI.fetchVessels(mvm) }) {
-                Text("Vessels Test")
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = departTime)
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = arriveTime)
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = duration)
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = schedule.vesselName)
             }
         }
     }
 }
 
 @Composable
-fun DatePickerModal(mvm: MainViewModel, onDismiss: () -> Unit) {
-    val datePickerState = rememberDatePickerState(
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return mvm.showDay(utcMilli = utcTimeMillis)
-            }
-        }
-    )
+fun TerminalControls() {
+    val mvm = IslandHopper.mvm
 
-    datePickerState.selectedDateMillis = mvm.dateMillis
-
-    DatePickerDialog(
-        onDismissRequest = { },
-        confirmButton = {
-            TextButton(onClick = {
-                mvm.dateMillis = datePickerState.selectedDateMillis!!
-                onDismiss()
-            }) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
-                Text("Cancel")
-            }
-        }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        DatePicker(state = datePickerState)
+        Box(
+            modifier = Modifier
+                .weight(weight = 1f)
+                .padding(horizontal = 6.dp)
+        ) {
+            DepartPicker()
+        }
+        IconButton(
+            onClick = {
+                mvm.setTerminals(depart = mvm.arrive, arrive = mvm.depart)
+                IslandHopper.updateSchedules()
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Default.SwapHoriz,
+                contentDescription = "Back"
+            )
+        }
+        Box(
+            modifier = Modifier
+                .weight(weight = 1f)
+                .padding(horizontal = 6.dp)
+        ) {
+            ArrivePicker()
+        }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DepartPicker(mvm: MainViewModel) {
+fun DepartPicker() {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -213,7 +185,7 @@ fun DepartPicker(mvm: MainViewModel) {
         TextField(
             modifier = Modifier
                 .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-            value = mvm.depart.name,
+            value = IslandHopper.mvm.depart.name,
             onValueChange = {},
             readOnly = true,
             singleLine = true,
@@ -228,8 +200,9 @@ fun DepartPicker(mvm: MainViewModel) {
                 DropdownMenuItem(
                     text = { Text(text = terminal.name, style = MaterialTheme.typography.bodyLarge) },
                     onClick = {
-                        mvm.depart = terminal
+                        IslandHopper.mvm.depart = terminal
                         expanded = false
+                        IslandHopper.updateSchedules()
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                 )
@@ -240,7 +213,7 @@ fun DepartPicker(mvm: MainViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArrivePicker(mvm: MainViewModel) {
+fun ArrivePicker() {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -250,7 +223,7 @@ fun ArrivePicker(mvm: MainViewModel) {
         TextField(
             modifier = Modifier
                 .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-            value = mvm.arrive.name,
+            value = IslandHopper.mvm.arrive.name,
             onValueChange = {},
             readOnly = true,
             singleLine = true,
@@ -265,8 +238,9 @@ fun ArrivePicker(mvm: MainViewModel) {
                 DropdownMenuItem(
                     text = { Text(text = terminal.name, style = MaterialTheme.typography.bodyLarge) },
                     onClick = {
-                        mvm.arrive = terminal
+                        IslandHopper.mvm.arrive = terminal
                         expanded = false
+                        IslandHopper.updateSchedules()
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                 )
@@ -275,11 +249,76 @@ fun ArrivePicker(mvm: MainViewModel) {
     }
 }
 
-
-@Preview(showBackground = true)
 @Composable
-fun IslandHopperPreview() {
-    IslandHopperTheme {
-        HomeScreen()
+fun DateControls() {
+    val mvm = IslandHopper.mvm
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        DatePickerModal(onDismiss = { showDatePicker = false })
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Button(
+            enabled = (mvm.dateMillis > mvm.todayMillis),
+            onClick = {
+                mvm.prevDay()
+                IslandHopper.updateSchedules()
+            }
+        ) {
+            Text(text = "Prev")
+        }
+        TextButton(onClick = { showDatePicker = true }) {
+            Text(
+                fontSize = 18.sp,
+                color = Color.Blue,
+                text = mvm.getFormattedDate())
+        }
+        Button(
+            onClick = {
+                mvm.nextDay()
+                IslandHopper.updateSchedules()
+            }
+        ) {
+            Text(text = "Next")
+        }
+    }
+
+}
+
+@Composable
+fun DatePickerModal(onDismiss: () -> Unit) {
+    val datePickerState = rememberDatePickerState(
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                return IslandHopper.mvm.showDay(utcMilli = utcTimeMillis)
+            }
+        }
+    )
+
+    datePickerState.selectedDateMillis = IslandHopper.mvm.dateMillis
+
+    DatePickerDialog(
+        onDismissRequest = { },
+        confirmButton = {
+            TextButton(onClick = {
+                IslandHopper.mvm.dateMillis = datePickerState.selectedDateMillis!!
+                IslandHopper.updateSchedules()
+                onDismiss()
+            }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
     }
 }
