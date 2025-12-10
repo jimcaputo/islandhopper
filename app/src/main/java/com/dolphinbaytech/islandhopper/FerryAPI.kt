@@ -153,7 +153,7 @@ object FerryAPI {
             val instant: Instant = Instant.ofEpochMilli(epochMilli)
             localDateTime = LocalDateTime.ofInstant(instant, ZoneId.of("America/Los_Angeles"))
         } else {
-            localDateTime = LocalDateTime.now()
+            localDateTime = LocalDateTime.MIN
         }
         return localDateTime
     }

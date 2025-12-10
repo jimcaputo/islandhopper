@@ -18,15 +18,15 @@ data class Vessel(
     var departTerminal: String = "",
     var atDock: Boolean = false,
     var arriveTerminal: String = "",
-    var scheduledDeparture: LocalDateTime = LocalDateTime.now(),
-    var actualDeparture: LocalDateTime = LocalDateTime.now(),
-    var estimatedArrival: LocalDateTime = LocalDateTime.now()
+    var scheduledDeparture: LocalDateTime = LocalDateTime.MIN,
+    var actualDeparture: LocalDateTime = LocalDateTime.MIN,
+    var estimatedArrival: LocalDateTime = LocalDateTime.MIN
 )
 
 data class Schedule(
     var vesselName: String = "",
-    var departTime: LocalDateTime = LocalDateTime.now(),
-    var arriveTime: LocalDateTime = LocalDateTime.now(),
+    var departTime: LocalDateTime = LocalDateTime.MIN,
+    var arriveTime: LocalDateTime = LocalDateTime.MIN,
     var duration: Long = 0
 )
 
@@ -77,6 +77,13 @@ class MainViewModel : ViewModel() {
         this.depart = depart
         this.arrive = arrive
     }
+
+    fun vesselExists(vesselName: String) : Boolean {
+        for (schedule in scheduleList) {
+            if (vesselName == schedule.vesselName) return true
+        }
+        return false
+    }
 }
 
 object IslandHopper {
@@ -90,5 +97,9 @@ object IslandHopper {
     fun updateSchedules() {
         reqId++
         FerryAPI.fetchSchedules(reqId)
+
+        if (mvm.dateMillis == mvm.todayMillis) {
+            FerryAPI.fetchVessels()
+        }
     }
 }
