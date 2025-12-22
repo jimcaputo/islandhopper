@@ -45,10 +45,6 @@ class MainViewModel : ViewModel() {
         return startOfDayInstant.toEpochMilli()
     }
 
-    fun showDay(utcMillis: Long) : Boolean {
-        return (utcMillis >= todayMillis)
-    }
-
     fun prevDay() {
         dateMillis -= 24 * 60 * 60 * 1000
     }

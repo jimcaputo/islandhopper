@@ -42,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -244,7 +243,6 @@ fun DateControls() {
         TextButton(onClick = { showDatePicker = true }) {
             Text(
                 fontSize = 18.sp,
-                color = Color.Blue,
                 text = IslandHopper.getFormattedDate(dateMillis = mvm.dateMillis, timeZone = "UTC"))
         }
         Button(
@@ -374,7 +372,7 @@ fun Vessels() {
                     showVesselInfo = true
                 }
             ) {
-                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = Color.Blue, text = vessel.name)
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = vessel.name)
                 Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = scheduled)
                 Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = actual)
             }
