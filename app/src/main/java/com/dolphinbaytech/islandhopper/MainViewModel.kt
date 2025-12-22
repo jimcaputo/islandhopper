@@ -10,7 +10,6 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 data class Vessel(
@@ -35,34 +34,19 @@ class MainViewModel : ViewModel() {
     var arrive by mutableStateOf(value = Anacortes)
 
     val todayMillis: Long = initTodayMilli()
-    val todayDateTime: LocalDateTime = initTodayDateTime()
     var dateMillis by mutableLongStateOf(value = todayMillis)
 
     var vesselList: MutableList<Vessel> = mutableStateListOf()
     var scheduleList: MutableList<Schedule> = mutableStateListOf()
 
     fun initTodayMilli() : Long {
-        val zonedDateTime: ZonedDateTime = Instant.now().atZone(ZoneId.systemDefault())
+        val zonedDateTime: ZonedDateTime = Instant.now().atZone(ZoneId.of("UTC"))
         val startOfDayInstant: Instant = zonedDateTime.truncatedTo(ChronoUnit.DAYS).toInstant()
         return startOfDayInstant.toEpochMilli()
     }
 
-    fun initTodayDateTime() : LocalDateTime {
-        val instant: Instant = Instant.ofEpochMilli(todayMillis)
-        val localDateTime: LocalDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
-        return localDateTime
-    }
-
-    fun getFormattedDate() : String {
-        val instant: Instant = Instant.ofEpochMilli(dateMillis)
-        val localDate = instant.atZone(ZoneId.of("UTC")).toLocalDate()
-        return localDate.format(DateTimeFormatter.ofPattern("EEE MM/dd/yy"))
-    }
-
-    fun showDay(utcMilli: Long) : Boolean {
-        val instant: Instant = Instant.ofEpochMilli(utcMilli)
-        val localDateTime: LocalDateTime = LocalDateTime.ofInstant(instant, ZoneId.of("UTC"))
-        return localDateTime >= todayDateTime
+    fun showDay(utcMillis: Long) : Boolean {
+        return (utcMillis >= todayMillis)
     }
 
     fun prevDay() {
@@ -83,23 +67,5 @@ class MainViewModel : ViewModel() {
             if (vesselName == schedule.vesselName) return true
         }
         return false
-    }
-}
-
-object IslandHopper {
-    lateinit var mvm: MainViewModel
-    var reqId: Long = 0
-
-    fun create(mvm: MainViewModel) {
-        this.mvm = mvm
-    }
-
-    fun updateSchedules() {
-        reqId++
-        FerryAPI.fetchSchedules(reqId)
-
-        if (mvm.dateMillis == mvm.todayMillis) {
-            FerryAPI.fetchVessels()
-        }
     }
 }

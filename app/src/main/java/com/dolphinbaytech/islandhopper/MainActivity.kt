@@ -47,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import java.time.format.DateTimeFormatter
 
 import com.dolphinbaytech.islandhopper.ui.theme.IslandHopperTheme
 import java.time.LocalDateTime
@@ -152,8 +151,7 @@ fun DepartPicker() {
         onExpandedChange = { expanded = it }
     ) {
         TextField(
-            modifier = Modifier
-                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             value = IslandHopper.mvm.depart.name,
             onValueChange = {},
             readOnly = true,
@@ -247,7 +245,7 @@ fun DateControls() {
             Text(
                 fontSize = 18.sp,
                 color = Color.Blue,
-                text = mvm.getFormattedDate())
+                text = IslandHopper.getFormattedDate(dateMillis = mvm.dateMillis, timeZone = "UTC"))
         }
         Button(
             onClick = {
@@ -266,7 +264,7 @@ fun DatePickerModal(onDismiss: () -> Unit) {
     val datePickerState = rememberDatePickerState(
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return IslandHopper.mvm.showDay(utcMilli = utcTimeMillis)
+                return utcTimeMillis >= IslandHopper.mvm.todayMillis
             }
         }
     )
@@ -313,10 +311,8 @@ fun Schedules() {
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            var departTime = schedule.departTime.format(DateTimeFormatter.ofPattern("h:mm"))
-            departTime += if (schedule.departTime.hour < 12) "am" else "pm"
-            var arriveTime = schedule.arriveTime.format(DateTimeFormatter.ofPattern("h:mm"))
-            arriveTime += if (schedule.arriveTime.hour < 12) "am" else "pm"
+            val departTime = IslandHopper.getFormattedTime(localDateTime = schedule.departTime)
+            val arriveTime = IslandHopper.getFormattedTime(localDateTime = schedule.arriveTime)
             val duration = schedule.duration.toString() + "min"
 
             Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = departTime)
@@ -342,7 +338,7 @@ fun Vessels() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
+            .padding(6.dp)
     ) {
         Text(modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Ferry")
         Text(modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Scheduled")
@@ -359,8 +355,7 @@ fun Vessels() {
         ) {
             var scheduled = "Not Available"
             if (vessel.scheduledDeparture != LocalDateTime.MIN) {
-                scheduled = vessel.scheduledDeparture.format(DateTimeFormatter.ofPattern("h:mm"))
-                scheduled += if (vessel.scheduledDeparture.hour < 12) "am" else "pm"
+                scheduled = IslandHopper.getFormattedTime(localDateTime = vessel.scheduledDeparture)
             }
             var actual = "Not Available"
             if (vessel.atDock) {
@@ -368,8 +363,7 @@ fun Vessels() {
             } 
             else {
                 if (vessel.actualDeparture != LocalDateTime.MIN) {
-                    actual = vessel.actualDeparture.format(DateTimeFormatter.ofPattern("h:mm"))
-                    actual += if (vessel.actualDeparture.hour < 12) "am" else "pm"
+                    actual = IslandHopper.getFormattedTime(localDateTime = vessel.actualDeparture)
                 }
             }
 
@@ -381,8 +375,8 @@ fun Vessels() {
                 }
             ) {
                 Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = Color.Blue, text = vessel.name)
-                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = Color.Blue, text = scheduled)
-                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = Color.Blue, text = actual)
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = scheduled)
+                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = actual)
             }
         }
     }
@@ -399,8 +393,7 @@ fun VesselInfoDialog(vessel: Vessel, onDismiss: () -> Unit) {
             Column(modifier = Modifier.padding(16.dp)) {
                 var scheduled = "Not Available"
                 if (vessel.scheduledDeparture != LocalDateTime.MIN) {
-                    scheduled = vessel.scheduledDeparture.format(DateTimeFormatter.ofPattern("h:mm"))
-                    scheduled += if (vessel.scheduledDeparture.hour < 12) "am" else "pm"
+                    scheduled = IslandHopper.getFormattedTime(localDateTime = vessel.scheduledDeparture)
                 }
                 var actual = "Not Available"
                 if (vessel.atDock) {
@@ -408,36 +401,44 @@ fun VesselInfoDialog(vessel: Vessel, onDismiss: () -> Unit) {
                 }
                 else {
                     if (vessel.actualDeparture != LocalDateTime.MIN) {
-                        actual = vessel.actualDeparture.format(DateTimeFormatter.ofPattern("h:mm"))
-                        actual += if (vessel.actualDeparture.hour < 12) "am" else "pm"
+                        actual = IslandHopper.getFormattedTime(localDateTime = vessel.actualDeparture)
                     }
                 }
 
-                Row(modifier = Modifier.padding(8.dp)) {
-                    Text(fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Vessel ")
-                    Text(fontSize = 18.sp, text = vessel.name)
-                }
-                Row(modifier = Modifier.padding(8.dp)) {
-                    Text(fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Scheduled ")
-                    Text(fontSize = 18.sp, text = scheduled)
-                }
-                Row(modifier = Modifier.padding(8.dp)) {
-                    Text(fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Actual ")
-                    Text(fontSize = 18.sp, text = actual)
-                }
-                Row(modifier = Modifier.padding(8.dp)) {
-                    Text(fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Depart ")
-                    Text(fontSize = 18.sp, text = vessel.departTerminal)
-                }
-                Row(modifier = Modifier.padding(8.dp)) {
-                    Text(fontSize = 18.sp, fontWeight = FontWeight.Bold, text = "Arrive ")
-                    Text(fontSize = 18.sp, text = vessel.arriveTerminal)
-                }
+                VesselDetailRow(item = "Vessel",    value = vessel.name)
+                VesselDetailRow(item = "Scheduled", value = scheduled)
+                VesselDetailRow(item = "Actual",    value = actual)
+                VesselDetailRow(item = "Depart",    value = vessel.departTerminal)
+                VesselDetailRow(item = "Arrive",    value = vessel.arriveTerminal)
 
-                Button(onClick = { onDismiss() }) {
-                    Text(text = "Close")
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(onClick = { onDismiss() }) {
+                        Text(text = "Close")
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun VesselDetailRow(item: String, value: String) {
+    Row(modifier = Modifier
+        .padding(8.dp)
+        .fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Text(
+            modifier = Modifier.weight(weight = 1f),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            text = item)
+        Text(
+            modifier = Modifier.weight(weight = 1f),
+            fontSize = 18.sp,
+            text = value)
     }
 }

@@ -24,7 +24,7 @@ object FerryAPI {
     fun fetchSchedules(reqId: Long) {
         val mvm = IslandHopper.mvm
 
-        // If the user set the terminals both the same, then clear the ListView, and simply return.
+        // If the user set the terminals both the same, then there's nothing to do
         if (mvm.depart.name == mvm.arrive.name) return
 
         val instant: Instant = Instant.ofEpochMilli(mvm.dateMillis)
@@ -42,7 +42,8 @@ object FerryAPI {
                 }
             },
             { error ->
-            })
+            }
+        )
 
         try {
             queue.add(request)
@@ -149,9 +150,8 @@ object FerryAPI {
         }
 
         if (time.contains("-")) {
-            val epochMilli = time.substring(time.indexOf("(") + 1, time.indexOf("-")).toLong()
-            val instant: Instant = Instant.ofEpochMilli(epochMilli)
-            localDateTime = LocalDateTime.ofInstant(instant, ZoneId.of("America/Los_Angeles"))
+            val epochMillis = time.substring(time.indexOf("(") + 1, time.indexOf("-")).toLong()
+            localDateTime = IslandHopper.getLocalDateTime(timeMillis = epochMillis, timeZone = "America/Los_Angeles")
         } else {
             localDateTime = LocalDateTime.MIN
         }
