@@ -1,5 +1,6 @@
 package com.dolphinbaytech.islandhopper
 
+import android.location.Location
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -14,9 +15,9 @@ import java.time.temporal.ChronoUnit
 
 data class Vessel(
     var name: String = "",
-    var departTerminal: String = "",
+    var depart: String = "",
     var atDock: Boolean = false,
-    var arriveTerminal: String = "",
+    var arrive: String = "",
     var scheduledDeparture: LocalDateTime = LocalDateTime.MIN,
     var actualDeparture: LocalDateTime = LocalDateTime.MIN,
     var estimatedArrival: LocalDateTime = LocalDateTime.MIN
@@ -30,7 +31,7 @@ data class Schedule(
 )
 
 class MainViewModel : ViewModel() {
-    var depart by mutableStateOf(value = Orcas)
+    var depart by mutableStateOf(value = Anacortes)
     var arrive by mutableStateOf(value = Anacortes)
 
     val todayMillis: Long = initTodayMilli()
@@ -43,6 +44,35 @@ class MainViewModel : ViewModel() {
         val zonedDateTime: ZonedDateTime = Instant.now().atZone(ZoneId.of("UTC"))
         val startOfDayInstant: Instant = zonedDateTime.truncatedTo(ChronoUnit.DAYS).toInstant()
         return startOfDayInstant.toEpochMilli()
+    }
+
+    fun initTerminals(currentLocation: Location) {
+        var shortestDistance = 0.0f
+        var closestTerminal: Terminal = Anacortes
+
+        for (terminal in Terminals) {
+            val terminalLocation = Location("")
+            terminalLocation.latitude = terminal.lat
+            terminalLocation.longitude = terminal.long
+
+            if (shortestDistance == 0.0f) {
+                shortestDistance = currentLocation.distanceTo(terminalLocation)
+                closestTerminal = terminal
+            } else if (currentLocation.distanceTo(terminalLocation) < shortestDistance) {
+                shortestDistance = currentLocation.distanceTo(terminalLocation)
+                closestTerminal = terminal
+            }
+        }
+
+        // HACK - optimized for just me, defaulting to Orcas  :)
+        if (closestTerminal == Anacortes) {
+            depart = Anacortes
+            arrive = Orcas
+        } else {
+            depart = Orcas
+            arrive = Anacortes
+        }
+        IslandHopper.updateSchedules()
     }
 
     fun prevDay() {

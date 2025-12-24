@@ -115,13 +115,13 @@ object FerryAPI {
                 val vessel = Vessel()
 
                 vessel.name = getJsonString(json = jsonVessel, name = "VesselName")
-                vessel.departTerminal = getJsonString(json = jsonVessel, name = "DepartingTerminalName")
+                vessel.depart = getJsonString(json = jsonVessel, name = "DepartingTerminalName")
                 vessel.scheduledDeparture = getJsonTime(json = jsonVessel, name = "ScheduledDeparture")
 
                 if (!jsonVessel.has("AtDock")) break
                 vessel.atDock = jsonVessel.getBoolean("AtDock")
                 if (!vessel.atDock) {
-                    vessel.arriveTerminal = getJsonString(json = jsonVessel, name = "ArrivingTerminalName")
+                    vessel.arrive = getJsonString(json = jsonVessel, name = "ArrivingTerminalName")
                     vessel.actualDeparture = getJsonTime(json = jsonVessel, name = "LeftDock")
                     vessel.estimatedArrival = getJsonTime(json = jsonVessel, name = "Eta")
                 }

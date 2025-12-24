@@ -14,8 +14,8 @@ android {
         applicationId = "com.dolphinbaytech.islandhopper"
         minSdk = 33
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.3"
+        versionCode = 6
+        versionName = "1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.ui.graphics)
+    implementation(libs.play.services.location)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

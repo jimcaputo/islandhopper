@@ -1,5 +1,8 @@
 package com.dolphinbaytech.islandhopper
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -46,27 +49,88 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 import com.dolphinbaytech.islandhopper.ui.theme.IslandHopperTheme
+import com.google.android.gms.location.LocationServices
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 
 class MainActivity : ComponentActivity() {
 
     val mvm: MainViewModel by viewModels()
+    var timePaused: Long = Instant.now().atZone(ZoneId.of("UTC")).toEpochSecond()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        requestPermissions()
         FerryAPI.create(applicationContext)
         IslandHopper.create(mvm)
-        IslandHopper.updateSchedules()
+        getLocation()   // This will also trigger IslandHopper.updateSchedules()
 
         setContent {
             IslandHopperTheme {
                 IslandHopper()
             }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        timePaused = Instant.now().atZone(ZoneId.of("UTC")).toEpochSecond()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        val now = Instant.now().atZone(ZoneId.of("UTC")).toEpochSecond()
+        if (now - timePaused > 60) {    // Refresh if app is restarted after being closed for 1 min
+            IslandHopper.updateSchedules()
+        }
+    }
+
+    fun requestPermissions() {
+        var permissions = emptyArray<String>()
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissions += Manifest.permission.ACCESS_FINE_LOCATION
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissions += Manifest.permission.ACCESS_COARSE_LOCATION
+        }
+
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissions, 0)
+        }
+    }
+
+    fun getLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { currentLocation: Location? ->
+                    if (currentLocation != null) {
+                        IslandHopper.mvm.initTerminals(currentLocation)
+                    }
+            }
+        }
+        else {
+            // In case the user has not enabled location services, just do an init with Anacortes location
+            val location = Location("")
+            location.latitude = Anacortes.lat
+            location.longitude = Anacortes.long
+            IslandHopper.mvm.initTerminals(currentLocation = location)
         }
     }
 }
@@ -406,8 +470,8 @@ fun VesselInfoDialog(vessel: Vessel, onDismiss: () -> Unit) {
                 VesselDetailRow(item = "Vessel",    value = vessel.name)
                 VesselDetailRow(item = "Scheduled", value = scheduled)
                 VesselDetailRow(item = "Actual",    value = actual)
-                VesselDetailRow(item = "Depart",    value = vessel.departTerminal)
-                VesselDetailRow(item = "Arrive",    value = vessel.arriveTerminal)
+                VesselDetailRow(item = "Depart",    value = vessel.depart)
+                VesselDetailRow(item = "Arrive",    value = vessel.arrive)
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(),

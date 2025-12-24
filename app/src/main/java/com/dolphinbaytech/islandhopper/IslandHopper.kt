@@ -15,6 +15,7 @@ object IslandHopper {
 
     fun updateSchedules() {
         reqId++
+        mvm.scheduleList.clear()
         FerryAPI.fetchSchedules(reqId)
 
         if (mvm.dateMillis == mvm.todayMillis) {
