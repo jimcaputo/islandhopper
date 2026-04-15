@@ -57,8 +57,9 @@ object FerryAPI {
 
         try {
             mvm.scheduleList.clear()
-            val schedules: JSONArray =
-                jsonSchedules.getJSONArray("TerminalCombos").getJSONObject(0).getJSONArray("Times")
+            val terminalCombos: JSONObject = jsonSchedules.getJSONArray("TerminalCombos").getJSONObject(0)
+            val schedules: JSONArray = terminalCombos.getJSONArray("Times")
+            val annotations: JSONArray = terminalCombos.getJSONArray("Annotations")
 
             for (i in 0..<schedules.length()) {
                 val schedule = Schedule()
@@ -68,6 +69,17 @@ object FerryAPI {
                 schedule.departTime = getJsonTime(json, name = "DepartingTime")
                 schedule.arriveTime = getJsonTime(json, name = "ArrivingTime")
                 schedule.duration = Duration.between(schedule.departTime, schedule.arriveTime).toMinutes()
+
+                // Annotations for given routes pretty much exclusively apply to inter-island traffic. Rather than
+                // display these all the time, let's filter and only display if it's an inter-island route.
+                // There's probably some risk that we're missing something, but based on looking carefully at the
+                // ferry schedule, it does not appear to be the case.
+                if (!(IslandHopper.mvm.depart == Anacortes  ||  IslandHopper.mvm.arrive == Anacortes)) {
+                    val annotationIndexes = json.getJSONArray("AnnotationIndexes")
+                    for (j in 0..<annotationIndexes.length()) {
+                        schedule.annotation = annotations.getString(annotationIndexes.getInt(j))
+                    }
+                }
 
                 // If cal is today, then only show times later in the day (plus 1 hour buffer for ferries running late)
                 if (mvm.dateMillis == mvm.todayMillis) {
@@ -79,6 +91,9 @@ object FerryAPI {
                     val dur = Duration.between(localDateTime, schedule.departTime).toMinutes()
                     if (dur < -60) {
                         continue
+                    }
+                    else if (dur > -60  &&  dur < 0) {
+                        schedule.pastDeparture = true
                     }
                 }
                 mvm.scheduleList.add(schedule)

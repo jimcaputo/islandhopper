@@ -27,23 +27,30 @@ data class Schedule(
     var vesselName: String = "",
     var departTime: LocalDateTime = LocalDateTime.MIN,
     var arriveTime: LocalDateTime = LocalDateTime.MIN,
-    var duration: Long = 0
+    var duration: Long = 0,
+    var pastDeparture: Boolean = false,
+    var annotation: String = ""
 )
 
 class MainViewModel : ViewModel() {
     var depart by mutableStateOf(value = Anacortes)
     var arrive by mutableStateOf(value = Anacortes)
 
-    val todayMillis: Long = initTodayMilli()
-    var dateMillis by mutableLongStateOf(value = todayMillis)
+    var todayMillis: Long = 0
+    var dateMillis by mutableLongStateOf(value = 0)
 
     var vesselList: MutableList<Vessel> = mutableStateListOf()
     var scheduleList: MutableList<Schedule> = mutableStateListOf()
 
-    fun initTodayMilli() : Long {
-        val zonedDateTime: ZonedDateTime = Instant.now().atZone(ZoneId.of("UTC"))
+    init {
+        initTodayMilli()
+    }
+
+    fun initTodayMilli() {
+        val zonedDateTime: ZonedDateTime = Instant.now().atZone(ZoneId.of("America/Los_Angeles"))
         val startOfDayInstant: Instant = zonedDateTime.truncatedTo(ChronoUnit.DAYS).toInstant()
-        return startOfDayInstant.toEpochMilli()
+        todayMillis = startOfDayInstant.toEpochMilli()
+        dateMillis = todayMillis
     }
 
     fun initTerminals(currentLocation: Location) {
@@ -81,6 +88,12 @@ class MainViewModel : ViewModel() {
 
     fun nextDay() {
         dateMillis += 24 * 60 * 60 * 1000
+    }
+
+    fun setDateUtcMillis(utcMillis: Long) {
+        val instant: Instant = Instant.ofEpochMilli(utcMillis)
+        val localDate = instant.atZone(ZoneId.of("UTC")).toLocalDate()
+        dateMillis = localDate.atStartOfDay(ZoneId.of("America/Los_Angeles")).toInstant().toEpochMilli()
     }
 
     fun setTerminals(depart: Terminal, arrive: Terminal) {

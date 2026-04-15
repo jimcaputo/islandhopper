@@ -1,5 +1,10 @@
 package com.dolphinbaytech.islandhopper
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationServices
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -11,6 +16,31 @@ object IslandHopper {
 
     fun create(mvm: MainViewModel) {
         this.mvm = mvm
+    }
+
+    fun getLocation(activity: MainActivity) {
+        if (ContextCompat.checkSelfPermission(activity.applicationContext, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity)
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { currentLocation: Location? ->
+                    if (currentLocation != null) {
+                        mvm.initTerminals(currentLocation)
+                    }
+                }
+        } else {
+            // In case the user has not enabled location services, just do an init with Anacortes location
+            val location = Location("")
+            location.latitude = Anacortes.lat
+            location.longitude = Anacortes.long
+            mvm.initTerminals(currentLocation = location)
+        }
+    }
+
+    fun reset(activity: MainActivity) {
+        mvm.initTodayMilli()
+        getLocation(activity)
     }
 
     fun updateSchedules() {

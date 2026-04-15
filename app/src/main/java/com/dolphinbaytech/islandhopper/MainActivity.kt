@@ -2,7 +2,6 @@ package com.dolphinbaytech.islandhopper
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,11 +55,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 import com.dolphinbaytech.islandhopper.ui.theme.IslandHopperTheme
-import com.google.android.gms.location.LocationServices
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-
 
 class MainActivity : ComponentActivity() {
 
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
         requestPermissions()
         FerryAPI.create(applicationContext)
         IslandHopper.create(mvm)
-        getLocation()   // This will also trigger IslandHopper.updateSchedules()
+        IslandHopper.reset(activity = this)   // This will also trigger IslandHopper.updateSchedules()
 
         setContent {
             IslandHopperTheme {
@@ -89,7 +89,10 @@ class MainActivity : ComponentActivity() {
         super.onResume()
 
         val now = Instant.now().atZone(ZoneId.of("UTC")).toEpochSecond()
-        if (now - timePaused > 60) {    // Refresh if app is restarted after being closed for 1 min
+        if (now - timePaused > 4 * 60) {    // Reset the entire app after 4 hours of not being used
+            IslandHopper.reset(activity = this)
+        }
+        else if (now - timePaused > 60) {   // Refresh schedules after 1 min of not being used
             IslandHopper.updateSchedules()
         }
     }
@@ -110,27 +113,6 @@ class MainActivity : ComponentActivity() {
 
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions, 0)
-        }
-    }
-
-    fun getLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-            fusedLocationClient.lastLocation
-                .addOnSuccessListener { currentLocation: Location? ->
-                    if (currentLocation != null) {
-                        IslandHopper.mvm.initTerminals(currentLocation)
-                    }
-            }
-        }
-        else {
-            // In case the user has not enabled location services, just do an init with Anacortes location
-            val location = Location("")
-            location.latitude = Anacortes.lat
-            location.longitude = Anacortes.long
-            IslandHopper.mvm.initTerminals(currentLocation = location)
         }
     }
 }
@@ -162,6 +144,7 @@ fun IslandHopper() {
             Schedules()
             Spacer(modifier = Modifier.height(24.dp))
             Vessels()
+            ResetControl()
         }
     }
 }
@@ -326,7 +309,7 @@ fun DatePickerModal(onDismiss: () -> Unit) {
     val datePickerState = rememberDatePickerState(
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return utcTimeMillis >= IslandHopper.mvm.todayMillis
+                return utcTimeMillis >= IslandHopper.mvm.todayMillis - 24 * 60 * 60 * 1000
             }
         }
     )
@@ -337,7 +320,7 @@ fun DatePickerModal(onDismiss: () -> Unit) {
         onDismissRequest = { },
         confirmButton = {
             TextButton(onClick = {
-                IslandHopper.mvm.dateMillis = datePickerState.selectedDateMillis!!
+                IslandHopper.mvm.setDateUtcMillis(datePickerState.selectedDateMillis!!)
                 IslandHopper.updateSchedules()
                 onDismiss()
             }) {
@@ -368,6 +351,7 @@ fun Schedules() {
     }
 
     for (schedule in IslandHopper.mvm.scheduleList) {
+        var color: Color = Color.Unspecified
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -377,10 +361,21 @@ fun Schedules() {
             val arriveTime = IslandHopper.getFormattedTime(localDateTime = schedule.arriveTime)
             val duration = schedule.duration.toString() + "min"
 
-            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = departTime)
-            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = arriveTime)
-            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = duration)
-            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = schedule.vesselName)
+            if (schedule.pastDeparture) color = Color.Gray
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = departTime)
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = arriveTime)
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = duration)
+            val star = if (!schedule.annotation.isEmpty()) "*" else ""
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = schedule.vesselName + star)
+        }
+        if (!schedule.annotation.isEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, top = 0.dp, end = 0.dp, bottom = 4.dp)
+            ) {
+                Text(fontSize = 14.sp, color = color, text = "*" + schedule.annotation)
+            }
         }
     }
 }
@@ -421,7 +416,7 @@ fun Vessels() {
             }
             var actual = "Not Available"
             if (vessel.atDock) {
-                actual = "At Dock"
+                actual = "At " + vessel.depart
             } 
             else {
                 if (vessel.actualDeparture != LocalDateTime.MIN) {
@@ -437,9 +432,9 @@ fun Vessels() {
                 }
             ) {
                 Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = vessel.name)
-                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = scheduled)
-                Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = actual)
             }
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = scheduled)
+            Text(modifier = Modifier.weight(1f), fontSize = 18.sp, text = actual)
         }
     }
 }
@@ -502,5 +497,21 @@ fun VesselDetailRow(item: String, value: String) {
             modifier = Modifier.weight(weight = 1f),
             fontSize = 18.sp,
             text = value)
+    }
+}
+
+@Composable
+fun ResetControl() {
+    val activity = LocalContext.current as MainActivity
+
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.Center
+
+    ) {
+        Button(onClick = { IslandHopper.reset(activity)}) {
+            Text(text = "Reset")
+        }
     }
 }
