@@ -70,8 +70,8 @@ object FerryAPI {
                 schedule.arriveTime = getJsonTime(json, name = "ArrivingTime")
                 schedule.duration = Duration.between(schedule.departTime, schedule.arriveTime).toMinutes()
 
-                // Annotations for given routes pretty much exclusively apply to inter-island traffic. Rather than
-                // display these all the time, let's filter and only display if it's an inter-island route.
+                // Annotations for given routes pretty much exclusively apply to interisland traffic. Rather than
+                // display these all the time, let's filter and only display if it's an interisland route.
                 // There's probably some risk that we're missing something, but based on looking carefully at the
                 // ferry schedule, it does not appear to be the case.
                 if (!(IslandHopper.mvm.depart == Anacortes  ||  IslandHopper.mvm.arrive == Anacortes)) {

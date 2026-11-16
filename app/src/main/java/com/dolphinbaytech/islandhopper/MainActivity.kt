@@ -1,6 +1,7 @@
 package com.dolphinbaytech.islandhopper
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -186,7 +187,6 @@ fun TerminalControls() {
     }
 }
 
-@Suppress("AssignedValueIsNeverRead")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DepartPicker() {
@@ -224,7 +224,6 @@ fun DepartPicker() {
     }
 }
 
-@Suppress("AssignedValueIsNeverRead")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArrivePicker() {
@@ -263,7 +262,6 @@ fun ArrivePicker() {
     }
 }
 
-@Suppress("AssignedValueIsNeverRead")
 @Composable
 fun DateControls() {
     val mvm = IslandHopper.mvm
@@ -365,10 +363,10 @@ fun Schedules() {
             Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = departTime)
             Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = arriveTime)
             Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = duration)
-            val star = if (!schedule.annotation.isEmpty()) "*" else ""
+            val star = if (schedule.annotation.isNotEmpty()) "*" else ""
             Text(modifier = Modifier.weight(1f), fontSize = 18.sp, color = color, text = schedule.vesselName + star)
         }
-        if (!schedule.annotation.isEmpty()) {
+        if (schedule.annotation.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -380,7 +378,6 @@ fun Schedules() {
     }
 }
 
-@Suppress("AssignedValueIsNeverRead")
 @Composable
 fun Vessels() {
     var showVesselInfo by remember { mutableStateOf(false) }
@@ -502,7 +499,14 @@ fun VesselDetailRow(item: String, value: String) {
 
 @Composable
 fun ResetControl() {
-    val activity = LocalContext.current as MainActivity
+    val context = LocalContext.current
+    val mainActivity: MainActivity
+    if (context is Activity) {
+        mainActivity = context as MainActivity
+    }
+    else {
+        return
+    }
 
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -510,7 +514,7 @@ fun ResetControl() {
         horizontalArrangement = Arrangement.Center
 
     ) {
-        Button(onClick = { IslandHopper.reset(activity)}) {
+        Button(onClick = { IslandHopper.reset(mainActivity)}) {
             Text(text = "Reset")
         }
     }
